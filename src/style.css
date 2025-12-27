@@ -1,0 +1,165 @@
+/* CSS Reset and Variables */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* Green Theme for Jelajah Karya */
+  --primary: #00C853;
+  /* Vibrant Green */
+  --primary-hover: #00a844;
+  --secondary: #e8f5e9;
+  /* Light Green Background */
+  --bg-color: #ffffff;
+  --card-bg: #ffffff;
+  --text-main: #1e293b;
+  /* Slate 800 */
+  --text-muted: #64748b;
+  /* Slate 500 */
+  --border-color: #e2e8f0;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.05);
+  --radius: 0.5rem;
+
+  /* Compatibility Aliases */
+  --bg-main: var(--bg-color);
+}
+
+/* Dark Mode Overrides */
+body.dark-mode {
+  --bg-color: #0f172a;
+  --card-bg: #1e293b;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --border-color: #334155;
+  --border-color: #334155;
+  --secondary: #1e293b;
+
+  /* Aliases for Dark Mode */
+  --bg-main: var(--bg-color);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  line-height: 1.6;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Utilities */
+.container {
+  max-width: 95%;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem 1.25rem;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+  cursor: pointer;
+  border: 1px solid transparent;
+  gap: 0.5rem;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: white;
+  text-decoration: none;
+  /* Ensure router-link doesn't show underline */
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.btn-outline {
+  background-color: transparent;
+  border: 1px solid var(--primary);
+  color: var(--primary);
+}
+
+.btn-outline:hover {
+  background-color: var(--secondary);
+}
+
+/* Dark Mode Button Overrides */
+body.dark-mode .btn-outline:hover {
+  background-color: rgba(0, 200, 83, 0.1);
+  /* Transparent primary */
+  color: var(--primary);
+}
+
+body.dark-mode button {
+  color: var(--text-main);
+}
+
+body.dark-mode .btn-primary {
+  color: white;
+  /* Always white on primary */
+}
+
+
+.section {
+  padding: 4rem 0;
+}
+
+.section-title {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 2rem;
+}
+
+.section-subtitle {
+  text-align: center;
+  color: var(--text-muted);
+  max-width: 600px;
+  margin: 0 auto 3rem;
+  font-size: 1rem;
+}
+
+/* Universal Dark Mode Text Overrides */
+/* Universal Dark Mode Text Overrides - Simplified */
+body.dark-mode {
+  color: var(--text-main);
+}
+
+
+
+body.dark-mode .text-muted,
+body.dark-mode .text-sm,
+body.dark-mode footer p {
+  color: var(--text-muted) !important;
+}
+
+body.dark-mode input,
+body.dark-mode select,
+body.dark-mode textarea {
+  color: var(--text-main) !important;
+  background-color: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+}
+
+body.dark-mode ::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
