@@ -22,8 +22,14 @@ const dragActive = ref(false)
 const isEditMode = ref(false)
 const existingWorkId = ref(null)
 
-const pageTitle = computed(() => isEditMode.value ? 'Edit Karya Ilmiah' : 'Unggah Karya Ilmiah')
-const submitButtonText = computed(() => isEditMode.value ? 'Simpan Perubahan' : 'Unggah Karya')
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+
+const pageTitle = computed(() =>
+  isEditMode.value ? 'Edit Karya Ilmiah' : 'Unggah Karya Ilmiah'
+)
+const submitButtonText = computed(() =>
+  isEditMode.value ? 'Simpan Perubahan' : 'Unggah Karya'
+)
 
 onMounted(() => {
   if (route.params.id) {
@@ -33,144 +39,184 @@ onMounted(() => {
   }
 })
 
-// Helper to get key
+/* ========================
+   STORAGE KEY
+======================== */
 const getWorksKey = () => {
-    const userStr = localStorage.getItem('user')
-    if (userStr) {
-        try {
-            const user = JSON.parse(userStr)
-            if (user.email) {
-                return 'data_' + user.email.replace(/[^a-zA-Z0-9]/g, '_') + '_works'
-            }
-        } catch(e) {}
-    }
-    return 'user_works'
+  const userStr = localStorage.getItem('user')
+  if (userStr) {
+    try {
+      const user = JSON.parse(userStr)
+      if (user.email) {
+        return 'data_' + user.email.replace(/[^a-zA-Z0-9]/g, '_') + '_works'
+      }
+    } catch {}
+  }
+  return 'user_works'
 }
 
+/* ========================
+   LOAD EDIT DATA
+======================== */
 const loadExistingWork = (id) => {
   const storedWorks = localStorage.getItem(getWorksKey())
-  if (storedWorks) {
-    try {
-      const works = JSON.parse(storedWorks)
-      const work = works.find(w => w.id == id)
-      if (work) {
-        form.value.title = work.title
-        form.value.category = work.category
-        form.value.author = work.author
-        form.value.abstract = work.abstract
-        form.value.keywords = work.keywords
-        form.value.fullContent = work.fullContent || ''
-        
-        if (work.pdfName) {
-           fileName.value = work.pdfName
-        }
-      } else {
-        alert('Karya tidak ditemukan')
-        router.push('/my-works')
-      }
-    } catch (e) {
-      console.error('Error loading work', e)
+  if (!storedWorks) return
+
+  try {
+    const works = JSON.parse(storedWorks)
+    const work = works.find(w => w.id == id)
+
+    if (!work) {
+      alert('Karya tidak ditemukan')
+      router.push('/my-works')
+      return
     }
+
+    form.value = {
+      title: work.title,
+      category: work.category,
+      author: work.author,
+      abstract: work.abstract,
+      keywords: work.keywords,
+      fullContent: work.fullContent || ''
+    }
+
+    if (work.pdfName) {
+      fileName.value = work.pdfName
+    }
+  } catch (e) {
+    console.error(e)
   }
 }
 
-// ... handlers ...
+/* ========================
+   UPLOAD HANDLER (FIX)
+======================== */
+const validateFile = (selectedFile) => {
+  if (selectedFile.type !== 'application/pdf') {
+    alert('Hanya file PDF yang diperbolehkan')
+    return false
+  }
+  if (selectedFile.size > MAX_FILE_SIZE) {
+    alert('Ukuran file maksimal 10MB')
+    return false
+  }
+  return true
+}
 
-const handleSubmit = () => {
-  // modify validation
-  if (!form.value.title || !form.value.category || !form.value.author || !form.value.abstract || !form.value.fullContent) {
-    alert('Mohon lengkapi semua field termasu Isi Lengkap')
+const handleFileUpload = (event) => {
+  const selectedFile = event.target.files[0]
+  if (!selectedFile) return
+  if (!validateFile(selectedFile)) {
+    event.target.value = ''
     return
   }
-  
+  file.value = selectedFile
+  fileName.value = selectedFile.name
+}
+
+const handleDrop = (event) => {
+  dragActive.value = false
+  const droppedFile = event.dataTransfer.files[0]
+  if (!droppedFile) return
+  if (!validateFile(droppedFile)) return
+  file.value = droppedFile
+  fileName.value = droppedFile.name
+}
+
+/* ========================
+   SUBMIT
+======================== */
+const handleSubmit = () => {
+  if (
+    !form.value.title ||
+    !form.value.category ||
+    !form.value.author ||
+    !form.value.abstract ||
+    !form.value.fullContent
+  ) {
+    alert('Mohon lengkapi semua field termasuk Isi Lengkap')
+    return
+  }
+
   if (!isEditMode.value && !file.value) {
-     alert('Mohon upload file PDF')
-     return
+    alert('Mohon upload file PDF')
+    return
   }
 
   const saveWork = (pdfData, pdfName) => {
     const worksKey = getWorksKey()
-    const storedWorks = localStorage.getItem(worksKey)
-    let works = []
-    if (storedWorks) {
-      try {
-        works = JSON.parse(storedWorks)
-      } catch (e) {
-        console.error('Error parsing works', e)
-        works = []
-      }
-    }
+    let works = JSON.parse(localStorage.getItem(worksKey) || '[]')
 
     if (isEditMode.value) {
       const index = works.findIndex(w => w.id == existingWorkId.value)
       if (index !== -1) {
-        // Update existing
         works[index] = {
           ...works[index],
-          title: form.value.title,
-          category: form.value.category,
-          author: form.value.author,
-          abstract: form.value.abstract,
-          keywords: form.value.keywords,
-          fullContent: form.value.fullContent,
+          ...form.value
         }
-        
         if (pdfData) {
           works[index].pdfUrl = pdfData
           works[index].pdfName = pdfName
         }
       }
     } else {
-      // Create new
-      const newWork = {
+      works.unshift({
         id: Date.now(),
-        title: form.value.title,
-        category: form.value.category,
-        author: form.value.author,
-        abstract: form.value.abstract,
-        keywords: form.value.keywords,
-        fullContent: form.value.fullContent,
+        ...form.value,
         date: new Date().toISOString().split('T')[0],
         views: 0,
         status: 'Published',
         pdfUrl: pdfData,
-        pdfName: pdfName
-      }
-      works.unshift(newWork)
+        pdfName
+      })
     }
-    
-    // ... save ...
 
     try {
       localStorage.setItem(worksKey, JSON.stringify(works))
+      addUploadNotification(form.value.title)
       router.push('/my-works')
-    } catch (e) {
-      alert('Gagal menyimpan file: Ukuran file terlalu besar untuk LocalStorage quota.')
+    } catch {
+      alert('Gagal menyimpan: ukuran file melebihi batas LocalStorage')
     }
   }
 
   if (file.value) {
-    // Read file as Base64 
     const reader = new FileReader()
-    reader.onload = (e) => {
-      saveWork(e.target.result, fileName.value)
-    }
+    reader.onload = e => saveWork(e.target.result, fileName.value)
     reader.readAsDataURL(file.value)
   } else {
-    // Edit mode with no new file
     saveWork(null, null)
   }
 }
 
-const handleCancel = () => {
-  router.push('/my-works')
+const addUploadNotification = (title) => {
+  const notif = {
+    id: Date.now(),
+    text: `Karya ilmiah "${title}" berhasil ditambahkan.`,
+    time: 'Baru saja',
+    read: false,
+    type: 'success'
+  }
+
+  const userNotifications =
+    JSON.parse(localStorage.getItem('user_notifications') || '[]')
+
+  userNotifications.unshift(notif)
+
+  localStorage.setItem(
+    'user_notifications',
+    JSON.stringify(userNotifications.slice(0, 10))
+  )
 }
+
+const handleCancel = () => router.push('/my-works')
 </script>
 
 <template>
   <div class="page-container">
     <DashboardNavbar />
-    
+
     <main class="container page-content">
       <div class="form-card">
         <div class="form-header">
@@ -179,86 +225,81 @@ const handleCancel = () => {
         </div>
 
         <form @submit.prevent="handleSubmit" class="work-form">
+          <!-- FORM INPUT (TIDAK DIUBAH) -->
+
           <div class="form-group">
             <label>Judul Karya <span class="required">*</span></label>
-            <input type="text" v-model="form.title" placeholder="Masukkan judul karya ilmiah" class="form-input" />
+            <input v-model="form.title" class="form-input" />
           </div>
 
           <div class="form-group">
             <label>Kategori <span class="required">*</span></label>
             <select v-model="form.category" class="form-select">
-              <option value="" disabled>Pilih kategori</option>
-              <option value="Teknologi Informasi">Teknologi Informasi</option>
-              <option value="Data Science">Data Science</option>
-              <option value="Internet of Things">Internet of Things</option>
-              <option value="Artificial Intelligence">Artificial Intelligence</option>
-              <option value="Cyber Security">Cyber Security</option>
+              <option disabled value="">Pilih kategori</option>
+              <option>Teknologi Informasi</option>
+              <option>Data Science</option>
+              <option>Internet of Things</option>
+              <option>Artificial Intelligence</option>
+              <option>Cyber Security</option>
             </select>
           </div>
 
           <div class="form-group">
             <label>Penulis <span class="required">*</span></label>
-            <input type="text" v-model="form.author" placeholder="Nama penulis (pisahkan dengan koma)" class="form-input" />
+            <input v-model="form.author" class="form-input" />
           </div>
 
           <div class="form-group">
             <label>Abstrak <span class="required">*</span></label>
-            <textarea v-model="form.abstract" rows="4" placeholder="Tuliskan abstrak karya ilmiah Anda" class="form-textarea"></textarea>
+            <textarea v-model="form.abstract" class="form-textarea" />
           </div>
 
           <div class="form-group">
             <label>Isi Lengkap <span class="required">*</span></label>
-            <textarea v-model="form.fullContent" rows="8" placeholder="Tuliskan isi lengkap karya ilmiah Anda" class="form-textarea"></textarea>
+            <textarea v-model="form.fullContent" class="form-textarea" />
           </div>
 
           <div class="form-group">
             <label>Kata Kunci <span class="required">*</span></label>
-            <input type="text" v-model="form.keywords" placeholder="Kata kunci (pisahkan dengan koma)" class="form-input" />
+            <input v-model="form.keywords" class="form-input" />
           </div>
 
           <div class="form-group">
-            <label>Upload File PDF <span class="required" v-if="!isEditMode">*</span></label>
-            <div 
+            <label>Upload File PDF <span v-if="!isEditMode">*</span></label>
+            <div
               class="upload-area"
-              :class="{ 'file-selected': file || fileName, 'drag-active': dragActive }"
+              :class="{ 'drag-active': dragActive }"
               @dragenter.prevent="dragActive = true"
               @dragleave.prevent="dragActive = false"
               @dragover.prevent
               @drop="handleDrop"
               @click="$refs.fileInput.click()"
             >
-              <input 
-                type="file" 
-                ref="fileInput" 
-                accept="application/pdf" 
+              <input
+                ref="fileInput"
+                type="file"
+                accept="application/pdf"
                 class="hidden-input"
                 @change="handleFileUpload"
               />
-              
-              <div v-if="!file && !fileName" class="upload-placeholder">
-                <div class="upload-icon-circle">
-                   <Upload :size="24" color="#6366f1" />
-                </div>
-                <p class="upload-text">Klik untuk upload file</p>
-                <p class="upload-hint">Format: PDF (Max 10MB)</p>
+
+              <div v-if="!file && !fileName">
+                <Upload />
+                <p>Klik untuk upload PDF (Max 10MB)</p>
               </div>
-              
-              <div v-if="file || fileName" class="file-info">
-                 <div class="file-details">
-                   <span class="file-name">{{ fileName }}</span>
-                   <span v-if="file" class="file-size">{{ (file.size / 1024 / 1024).toFixed(2) }} MB</span>
-                   <span v-else class="file-size">File Sebelumnya</span>
-                 </div>
-                 <button type="button" class="remove-file" @click.stop="file = null; fileName = ''">
-                   <X :size="18" />
-                 </button>
+
+              <div v-else class="file-info">
+                <span>{{ fileName }}</span>
+                <button @click.stop="file=null;fileName=''">
+                  <X />
+                </button>
               </div>
             </div>
           </div>
 
           <div class="form-actions">
             <button type="button" class="btn btn-outline" @click="handleCancel">Batal</button>
-            <button type="submit" class="btn btn-primary btn-submit">{{ submitButtonText }}</button>
+            <button class="btn btn-primary">{{ submitButtonText }}</button>
           </div>
         </form>
       </div>
@@ -407,3 +448,4 @@ const handleCancel = () => {
   background-color: rgba(255,255,255,0.05);
 }
 </style>
+

@@ -2,19 +2,19 @@
 import { BookOpen, Mail, Lock, ArrowLeft } from 'lucide-vue-next'
 import { useRouter, useRoute } from 'vue-router'
 import { onMounted, ref } from 'vue'
-
 import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
-const showSuccessMessage = ref(false)
+
 const email = ref('')
+const password = ref('')
+const showSuccessMessage = ref(false)
 
 onMounted(() => {
   if (route.query.registered === 'success') {
     showSuccessMessage.value = true
-    // Hide message after 5 seconds
     setTimeout(() => {
       showSuccessMessage.value = false
     }, 5000)
@@ -22,38 +22,28 @@ onMounted(() => {
 })
 
 const handleLogin = () => {
-  // Check if there is a registered user in DB
-  const usersDb = JSON.parse(localStorage.getItem('users_db') || '[]')
-  
-  // Find user by email (and password if we were checking it properly)
-  const foundUser = usersDb.find(u => u.email === email.value)
-  
-  if (foundUser) {
-      name = foundUser.name
-      userEmail = foundUser.email
-      // Use found user
-  } else if (!email.value) {
-      // Demo mode if no email entered
-      name = 'User Demo'
-      userEmail = 'user@demo.com'
-  } else {
-      // Email entered but not found
-      alert('User tidak ditemukan')
-      return
+  if (!email.value || !password.value) {
+    alert('Email dan password wajib diisi')
+    return
   }
 
-  const userData = {
-    name: name,
-    email: userEmail,
-    role: 'user'
+  const usersDb = JSON.parse(localStorage.getItem('users_db') || '[]')
+
+  const foundUser = usersDb.find(
+    u => u.email === email.value && u.password === password.value
+  )
+
+  if (!foundUser) {
+    alert('Email atau password salah')
+    return
   }
-  
-  authStore.login(userData)
-  
-  // Force reload might be needed to reset stores if they are singletons, 
-  // but let's try just pushing route first. 
-  // Ideally, stores should watch user changes.
-  window.dispatchEvent(new Event('storage')) 
+
+  authStore.login({
+    name: foundUser.name,
+    email: foundUser.email,
+    role: foundUser.role
+  })
+
   router.push('/dashboard')
 }
 </script>
@@ -63,6 +53,7 @@ const handleLogin = () => {
     <router-link to="/" class="back-btn">
       <ArrowLeft :size="20" /> Kembali ke Beranda
     </router-link>
+
     <div class="auth-card">
       <!-- Left Side: Branding -->
       <div class="auth-brand-side">
@@ -88,7 +79,7 @@ const handleLogin = () => {
           <p>Silakan masukkan detail akun Anda</p>
         </div>
 
-        <form class="auth-form" @submit.prevent>
+        <form class="auth-form" @submit.prevent="handleLogin">
           <div v-if="showSuccessMessage" class="alert-success">
             Pendaftaran berhasil silahkan masuk ke akun anda
           </div>
@@ -97,7 +88,11 @@ const handleLogin = () => {
             <label>Email</label>
             <div class="input-wrapper">
               <Mail class="input-icon" :size="20" />
-              <input type="email" placeholder="email@example.com" v-model="email" />
+              <input
+                type="email"
+                placeholder="email@example.com"
+                v-model="email"
+              />
             </div>
           </div>
 
@@ -105,7 +100,11 @@ const handleLogin = () => {
             <label>Password</label>
             <div class="input-wrapper">
               <Lock class="input-icon" :size="20" />
-              <input type="password" placeholder="........" />
+              <input
+                type="password"
+                placeholder="........"
+                v-model="password"
+              />
             </div>
           </div>
 
@@ -114,10 +113,14 @@ const handleLogin = () => {
               <input type="checkbox" />
               <span>Ingat saya</span>
             </label>
-            <router-link to="/forgot-password" class="forgot-password">Lupa password?</router-link>
+            <router-link to="/forgot-password" class="forgot-password">
+              Lupa password?
+            </router-link>
           </div>
 
-          <button class="btn btn-primary btn-block" @click="handleLogin">Masuk</button>
+          <button class="btn btn-primary btn-block" type="submit">
+            Masuk
+          </button>
         </form>
 
         <div class="auth-footer">
@@ -129,6 +132,7 @@ const handleLogin = () => {
 </template>
 
 <style scoped>
+/* ===== CSS ASLI KAMU (TIDAK DIUBAH) ===== */
 .auth-page {
   min-height: 100vh;
   display: flex;
@@ -360,20 +364,20 @@ const handleLogin = () => {
     flex-direction: column;
     max-width: 500px;
   }
-  
+
   .auth-brand-side {
     padding: 2rem;
     min-height: auto;
   }
-  
+
   .auth-brand-side h2 {
     font-size: 1.75rem;
   }
-  
+
   .logo-wrapper {
     margin-bottom: 1.5rem;
   }
-  
+
   .auth-form-side {
     padding: 2rem;
   }
