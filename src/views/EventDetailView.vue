@@ -187,12 +187,23 @@ const eventData = {
 }
 
 onMounted(() => {
-  const id = route.params.id
-  event.value = eventData[id] || eventData.default
+  const id = parseInt(route.params.id)
+  
+  // PRIORITAS 1: Cek di localStorage dulu (untuk event yang dibuat user)
+  const createdEvents = JSON.parse(localStorage.getItem('created_events') || '[]')
+  const createdEvent = createdEvents.find(e => e.id === id)
+  
+  if (createdEvent) {
+    // Event ditemukan di localStorage (event buatan user)
+    event.value = createdEvent
+  } else {
+    // PRIORITAS 2: Fallback ke eventData hardcoded (event default)
+    event.value = eventData[id] || eventData.default
+  }
   
   // Check registration status from localStorage
   const registeredEvents = JSON.parse(localStorage.getItem('registered_events') || '[]')
-  if (registeredEvents.includes(parseInt(id))) {
+  if (registeredEvents.includes(id)) {
     event.value.isRegistered = true
   }
 
